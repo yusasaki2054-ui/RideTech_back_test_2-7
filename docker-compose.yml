@@ -1,0 +1,71 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: php-orders-app
+    ports:
+      - '8080:80' # http://localhost:8080
+    volumes:
+      - ./:/var/www/html # プロジェクト直下をDocumentRootにマウント
+    environment:
+      TZ: 'Asia/Tokyo'
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: appdb
+      DB_USER: app
+      DB_PASS: app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    container_name: mysql8
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_DATABASE: appdb
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+      MYSQL_ROOT_PASSWORD: devroot
+      TZ: 'Asia/Tokyo'
+    # 文字コード/照合順序と認証方式（互換のため mysql_native_password）
+    command:
+      - '--default-authentication-plugin=mysql_native_password'
+      - '--character-set-server=utf8mb4'
+      - '--collation-server=utf8mb4_0900_ai_ci'
+      - '--innodb_file_per_table=1'
+      - '--innodb_flush_log_at_trx_commit=1'
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro # 以前のDDL/Seedをここに置く
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_USER: app
+      PMA_PASSWORD: app
+      UPLOAD_LIMIT: 128M
+      TZ: Asia/Tokyo
+    ports:
+      - '8081:80'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
