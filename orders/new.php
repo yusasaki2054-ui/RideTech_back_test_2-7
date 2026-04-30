@@ -25,6 +25,7 @@ $old    = flash_get('old', ['user_id'=>'', 'qty'=>[]]);
 $users = [];
 try {
     // ここでusersを取得してください
+    $users = pdo()->query('SELECT id, name FROM users ORDER BY id ASC')->fetchAll();
 } catch (Throwable $e) {
     error_log('[orders/new users] '.$e->getMessage());
 }
@@ -34,6 +35,7 @@ try {
 $products = [];
 try {
     // ここでproductsを取得してください
+    $products = pdo()->query('SELECT id, name, price FROM products ORDER BY id ASC')->fetchAll();
 } catch (Throwable $e) {
     error_log('[orders/new products] '.$e->getMessage());
 }
@@ -65,7 +67,7 @@ try {
 
     <div class="card">
       <!-- TODO: action の先は create.php（MUST） -->
-      <form action="" method="post" class="form-grid" novalidate>
+      <form action="create.php" method="post" class="form-grid" novalidate>
         <!-- STEP 3: CSRF トークン（MUST／この hidden は消さない） -->
         <?= csrf_field() ?>
 
@@ -101,7 +103,7 @@ try {
                     <td><?= e((string)($p['name'] ?? '')) ?></td>
                     <td style="text-align:right;">¥<?= number_format((float)($p['price'] ?? 0)) ?></td>
                     <!-- STEP 4: 数量は 0〜99（MUST） -->
-                    <td><input type="number" name="qty[<?= e($pid) ?>]" value="<?= $qty ?>"></td>
+                    <td><input type="number" name="qty[<?= e($pid) ?>]" value="<?= $qty ?>" min="0" max="99"></td>
                   </tr>
                 <?php endforeach; ?>
               <?php else: ?>

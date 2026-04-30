@@ -22,32 +22,53 @@ if ($id <= 0) { http_response_code(400); exit('Bad Request'); }
 
 $head = null;
 $list = [];
-$notImplemented = false;
 
 try {
   // ---------- STEP 1: 注文ヘッダの取得（TODO） ----------
   $sqlHead = <<<SQL
+    SELECT o.id,
+           o.order_date,
+           o.total_amount,
+           u.name AS user_name
+      FROM orders o
+      JOIN users u ON u.id = o.user_id
+      WHERE o.id = :id
+
 -- TODO: SQLを組み立ててください
 SQL;
+$stHead = pdo()->prepare($sqlHead);
+$stHead->execute([':id' => $id]);
+$head = $stHead->fetch();
+
+if (!$head) {
+  http_response_code(404);
+  exit('Not Found');
+}
   // ここでSQLを実行してください
 
   // ---------- STEP 2: 明細の取得（TODO） ----------
   $sqlItems = <<<SQL
 -- TODO:SQLを組み立ててください
+    SELECT p.name
+           AS product_name,
+           oi.qty,
+           oi.unit_price,
+           (oi.qty * oi.unit_price) AS subtotal
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = :id
+      ORDER BY oi.id ASC
 SQL;
   // 例：
   // ここでSQLを実行してください
+  $stItems = pdo()->prepare($sqlItems);
+  $stItems->execute([':id' => $id]);
+  $list = $stItems->fetchAll();
 
 } catch (Throwable $e) {
   error_log('[orders/show] '.$e->getMessage());
   http_response_code(500);
   exit('Internal Server Error');
-}
-
-// 未実装でも画面を壊さないためのプレースホルダ
-if (!$head) {
-  $notImplemented = true;
-  $head = ['id' => $id, 'order_date' => '', 'total_amount' => 0, 'user_name' => ''];
 }
 ?>
 <!doctype html>
@@ -68,14 +89,6 @@ if (!$head) {
         <a href="index.php"><button class="secondary">一覧へ</button></a>
       </div>
     </div>
-
-    <?php if ($notImplemented): ?>
-      <div class="card notice">
-        この画面は <strong>未実装のクエリがあります</strong>。<br>
-        <code>$sqlHead</code> と <code>$sqlItems</code> を実装し、プリペアドで <code>:id</code> をバインドして取得してください。<br>
-        注文が存在しない場合は <code>404 Not Found</code> を返すこと（MUST）。
-      </div>
-    <?php endif; ?>
 
     <div class="card">
       <h2>明細</h2>
